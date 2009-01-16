@@ -7,6 +7,8 @@ class HttpRequest {
 
 	protected $headers;
 	
+	
+	
 	public function __construct($url=NULL) {
 		$this->headers = array();
 		
@@ -17,12 +19,14 @@ class HttpRequest {
 	
 	public function setUrl($url) {
 		$urlSegments = $this->segmentUrl($url);
-	
+
+		$this->path = $urlSegments['path'];
+		$this->setDomain($urlSegments['host']);	
 	}
 
 	public function setMethod($method) {
 		$method = strtoupper($method);
-		if ($this->isValid($method)) {
+		if ($this->isValidMethod($method)) {
 			$this->method = $method;
 		}
 	}
@@ -32,6 +36,10 @@ class HttpRequest {
 		if (!is_null($version)) {
 			$this->version = $version;
 		}
+	}
+	
+	public function setDomain($domain) {
+		
 	}
 
 
