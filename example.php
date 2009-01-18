@@ -17,6 +17,7 @@ $response = $http->doRequest($request);
 //print_r($request);
 //print_r($response);
 
+// Display the title of the page
 if (preg_match('/<title>([^<]+)<\/title>/', $response->getBody(), $matches)) {
 	echo "Title: {$matches[1]}\n";
 }
