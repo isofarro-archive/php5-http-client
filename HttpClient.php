@@ -10,6 +10,8 @@ class FileContentsHttpClient implements HttpClientMechanism {
 		$hasFeature = true;
 		switch($feature) {
 			case 'GET':
+				// TODO: need to check that file_get_contents
+				// can accept URLs.
 				$hasFeature = true;
 				break;
 			default:
@@ -42,6 +44,33 @@ class FileContentsHttpClient implements HttpClientMechanism {
 	}	
 	
 }
+
+
+
+class CurlHttpClient implements HttpClientMechanism {
+	public function can($feature) {
+		$hasFeature = true;
+		switch($feature) {
+			case 'GET':
+				$hasFeature = true;
+				break;
+			default:
+				$hasFeature = false;
+				break;
+		}
+		return $feature;
+	}
+	
+	public function doRequest($request) {
+		$response = NULL;		
+
+		return $response;
+	}	
+	
+}
+
+
+
 
 class HttpClient {
 	protected $request;
@@ -108,7 +137,8 @@ class HttpClient {
 	
 	protected function initHttpMechanism() {
 		// Find the best available HTTP mechanism
-		$this->client = new FileContentsHttpClient();
+		//$this->client = new FileContentsHttpClient();
+		$this->client = new CurlHttpClient();
 	}
 
 }
