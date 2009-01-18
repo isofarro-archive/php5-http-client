@@ -6,8 +6,10 @@ class HttpRequest {
 	protected $version = '1.0';
 
 	protected $headers;
-	
-	
+	protected $body;
+
+	protected $url;
+	protected $rawUrl;
 	
 	public function __construct($url=NULL) {
 		$this->headers = array();
@@ -18,10 +20,19 @@ class HttpRequest {
 	}
 	
 	public function setUrl($url) {
-		$urlSegments = $this->segmentUrl($url);
-
-		$this->path = $urlSegments['path'];
-		$this->setDomain($urlSegments['host']);	
+		$this->rawUrl = $url;
+		$this->url    = $this->segmentUrl($url);
+		$this->setPath($this->url['path']);
+	}
+	
+	public function getUrl() {
+		return $this->rawUrl;
+	}
+	
+	
+	public function setPath($path) {
+		// TODO: Check that it starts with a /
+		$this->path = $path;
 	}
 
 	public function setMethod($method) {
@@ -31,18 +42,17 @@ class HttpRequest {
 		}
 	}
 	
+	public function getMethod() {
+		return $this->method;
+	}
+	
 	public function setVersion($version) {
 		$version = $this->normaliseVersion($version);
 		if (!is_null($version)) {
 			$this->version = $version;
 		}
 	}
-	
-	public function setDomain($domain) {
 		
-	}
-
-
 
 
 
@@ -53,7 +63,8 @@ class HttpRequest {
 			$segments['path']     = $matches[3];
 			
 			$domain = $matches[2];
-			if (preg_match('/^([^:]:?(\d*))/', $domain, $matches)) {
+			// TODO: Check for username/passwords in the URL
+			if (preg_match('/^([^:]+):?(\d*)/', $domain, $matches)) {
 				$segments['domain'] = $matches[1];
 				if (!empty($matches[2])) {
 					$segments['port'] = $matches[2];
@@ -78,7 +89,7 @@ class HttpRequest {
 		switch($method) {
 			case 'GET':
 			case 'POST':
-			case 'PUT':
+			case 'PUT':			
 			case 'DELETE':
 				$isValid = true;
 				break;
