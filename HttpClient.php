@@ -1,11 +1,11 @@
 <?php
 
-//interface HttpClientMechanism {
-//	public function can($feature);
-//	public function doRequest($request);
-//}
+interface HttpClientMechanism {
+	public function can($feature);
+	public function doRequest($request);
+}
 
-class FileContentsHttpClient /* extends HttpClientMechanism */ {
+class FileContentsHttpClient implements HttpClientMechanism {
 	public function can($feature) {
 		$hasFeature = true;
 		switch($feature) {
