@@ -8,11 +8,12 @@ $http    = new HttpClient();
 
 $request = new HttpRequest();
 $request->setMethod('GET');
-$request->setUrl('http://delicious.com:80/isofarro/accessibility/');
+//$request->setUrl('http://delicious.com:80/isofarro/accessibility/');
+$request->setUrl('http://localhost/');
 
 $response = $http->doRequest($request);
 
 //print_r($http);
-print_r($request);
-print_r($response);
+//print_r($request);
+//print_r($response);
 ?>
