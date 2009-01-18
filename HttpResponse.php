@@ -13,13 +13,25 @@ class HttpResponse {
 	public function setStatus($status) {
 		$this->status = $status;
 	}
+	
+	public function getStatus() {
+		return $this->status;
+	}
 
 	public function setStatusMsg($statusMsg) {
 		$this->statusMsg = $statusMsg;
 	}
+	
+	public function getStatusMsg() {
+		return $this->getStatusMsg;
+	}
 
 	public function setBody($body) {
 		$this->body = $body;
+	}
+	
+	public function getBody() {
+		return $this->body;
 	}
 
 }

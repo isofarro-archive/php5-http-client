@@ -62,11 +62,35 @@ class CurlHttpClient implements HttpClientMechanism {
 	}
 	
 	public function doRequest($request) {
-		$response = NULL;		
-
+		$response = NULL;
+		switch($request->getMethod()) {
+			case 'GET':
+				$response = $this->doGet($request);
+				break;
+			default:
+				break;
+		}
 		return $response;
 	}	
 	
+	public function doGet($request) {
+		$ch = curl_init();
+		
+		//curl_setopt($ch, CURLOPT_GET, true);
+		curl_setopt($ch, CURLOPT_URL, $request->getUrl());
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		
+		$body = curl_exec($ch);
+		
+		curl_close($ch);
+		
+		$response = new HttpResponse();
+		$response->setBody($body);
+		$response->setStatus(200);
+		$response->setStatusMsg('Ok');
+		
+		return $response;
+	}
 }
 
 

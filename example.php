@@ -16,4 +16,9 @@ $response = $http->doRequest($request);
 //print_r($http);
 //print_r($request);
 //print_r($response);
+
+if (preg_match('/<title>([^<]+)<\/title>/', $response->getBody(), $matches)) {
+	echo "Title: {$matches[1]}\n";
+}
+
 ?>
