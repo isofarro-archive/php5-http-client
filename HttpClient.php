@@ -86,7 +86,11 @@ class CurlHttpClient implements HttpClientMechanism {
 		curl_setopt($ch, CURLOPT_HTTPGET, true);
 		curl_setopt($ch, CURLOPT_URL, $request->getUrl());
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+		// Output the headers too
+		curl_setopt($ch, CURLOPT_HEADER, true);
 		
+		// TODO: Need to parse out the headers first!
 		$body = curl_exec($ch);
 		
 		$response = new HttpResponse();
