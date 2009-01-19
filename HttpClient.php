@@ -12,7 +12,11 @@ class FileContentsHttpClient implements HttpClientMechanism {
 			case 'GET':
 				// TODO: need to check that file_get_contents
 				// can accept URLs.
-				$hasFeature = true;
+				if (ini_get('allow_url_fopen')) {
+					echo "INFO: file_get_contents allows URLs\n";
+					$hasFeature = true;
+				}
+				$hasFeature = false;
 				break;
 			default:
 				$hasFeature = false;
@@ -52,7 +56,10 @@ class CurlHttpClient implements HttpClientMechanism {
 		$hasFeature = true;
 		switch($feature) {
 			case 'GET':
-				$hasFeature = true;
+				if (function_exists('curl_init')) {
+					$hasFeature = true;
+				}
+				$hasFeature = false;
 				break;
 			default:
 				$hasFeature = false;
@@ -76,19 +83,25 @@ class CurlHttpClient implements HttpClientMechanism {
 	public function doGet($request) {
 		$ch = curl_init();
 		
-		//curl_setopt($ch, CURLOPT_GET, true);
+		curl_setopt($ch, CURLOPT_HTTPGET, true);
 		curl_setopt($ch, CURLOPT_URL, $request->getUrl());
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		
 		$body = curl_exec($ch);
 		
-		curl_close($ch);
-		
 		$response = new HttpResponse();
 		$response->setBody($body);
-		$response->setStatus(200);
-		$response->setStatusMsg('Ok');
+		$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));
 		
+		$response->addHeader('Content-Type',
+			curl_getinfo($ch, CURLINFO_CONTENT_TYPE)
+		);
+		$response->addHeader('Content-Length',
+			curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD)
+		);
+				
+		curl_close($ch);
+
 		return $response;
 	}
 }

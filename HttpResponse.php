@@ -34,6 +34,12 @@ class HttpResponse {
 		return $this->body;
 	}
 
+	public function addHeader($header, $value) {
+		if (empty($this->headers)) {
+			$this->headers = array();
+		}
+		$this->headers[$header] = $value;
+	}
 }
 
 ?>
