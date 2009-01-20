@@ -3,7 +3,7 @@
 class HttpRequest {
 	protected $method;
 	protected $path;	
-	protected $version = '1.0';
+	protected $version = 'HTTP/1.1';
 
 	protected $headers;
 	protected $body;
@@ -49,7 +49,7 @@ class HttpRequest {
 	public function setVersion($version) {
 		$version = $this->normaliseVersion($version);
 		if (!is_null($version)) {
-			$this->version = $version;
+			$this->version = 'HTTP/' . $version;
 		}
 	}
 		

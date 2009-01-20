@@ -1,6 +1,7 @@
 <?php
 
 class HttpResponse {
+	protected $version;
 	protected $status;
 	protected $statusMsg;
 	protected $headers;
@@ -8,6 +9,10 @@ class HttpResponse {
 
 	public function __construct() {
 	
+	}
+	
+	public function setVersion($version) {
+		$this->version = $version;
 	}
 	
 	public function setStatus($status) {
@@ -23,7 +28,7 @@ class HttpResponse {
 	}
 	
 	public function getStatusMsg() {
-		return $this->getStatusMsg;
+		return $this->statusMsg;
 	}
 
 	public function setBody($body) {
@@ -32,6 +37,12 @@ class HttpResponse {
 	
 	public function getBody() {
 		return $this->body;
+	}
+
+	public function setHeaders($headers) {
+		foreach($headers as $name=>$value) {
+			$this->headers[$name] = $value;
+		}
 	}
 
 	public function addHeader($header, $value) {

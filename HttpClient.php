@@ -91,22 +91,68 @@ class CurlHttpClient implements HttpClientMechanism {
 		curl_setopt($ch, CURLOPT_HEADER, true);
 		
 		// TODO: Need to parse out the headers first!
-		$body = curl_exec($ch);
+		$httpOutput = curl_exec($ch);
+		list ($headers, $body) = $this->parseOutput($httpOutput);
 		
 		$response = new HttpResponse();
+
+		if ($headers[0]) {
+			//echo "STATUS LINE:", $headers[0], "\n";
+			if (preg_match('/^(HTTP\/\d\.\d) (\d*) (.*)$/', $headers[0], $matches)) {
+				$response->setStatus($matches[2]);
+				$response->setStatusMsg($matches[3]);
+				$response->setVersion($matches[1]);
+			}
+			unset($headers[0]);
+		} else {
+			$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));	
+		}
+
 		$response->setBody($body);
-		$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));
-		
+		$response->setHeaders($headers);		
+
+/********		
 		$response->addHeader('Content-Type',
 			curl_getinfo($ch, CURLINFO_CONTENT_TYPE)
 		);
 		$response->addHeader('Content-Length',
 			curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD)
 		);
+********/
 				
 		curl_close($ch);
 
 		return $response;
+	}
+	
+	protected function parseOutput($output) {
+		$lines = explode("\n", $output);
+		$isHeader = true;
+		
+		$headers = array();
+		$buffer  = array();
+
+		foreach($lines as $line) {
+			if ($isHeader) {
+				if (preg_match('/^\s*$/', $line)) {
+					// Header/body separator
+					$isHeader = false;
+				} else {
+					// This is a real HTTP header
+					if (preg_match('/^([^:]+)\:(.*)$/', $line, $matches)) {
+						//echo "HEADER: [", $matches[1], ']: [', $matches[2], "]\n";
+						$headers[trim($matches[1])] = trim($matches[2]);
+					} else {
+						//echo "HEADER: ", trim($line), "\n";
+						$headers[0] = trim($line);
+					}					
+				}
+			} else {
+				$buffer[] = $line;
+			}
+		}		
+		$body = implode("\n", $buffer);
+		return array($headers, $body);
 	}
 }
 
