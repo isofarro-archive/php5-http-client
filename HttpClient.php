@@ -13,7 +13,7 @@ class FileContentsHttpClient implements HttpClientMechanism {
 				// TODO: need to check that file_get_contents
 				// can accept URLs.
 				if (ini_get('allow_url_fopen')) {
-					echo "INFO: file_get_contents allows URLs\n";
+					//echo "INFO: file_get_contents allows URLs\n";
 					$hasFeature = true;
 				}
 				$hasFeature = false;
@@ -28,20 +28,40 @@ class FileContentsHttpClient implements HttpClientMechanism {
 	public function doRequest($request) {
 		$response = NULL;		
 		if ($request->getMethod()=='GET') {
-			$body     = @file_get_contents($request->getUrl());
-			
-			$response = new HttpResponse();
-			if (!empty($body)) {
-				$response->setStatus('200');
-				$response->setStatusMsg('Ok');
-				$response->setBody($body);
+			$url      = $request->getUrl();
+			$body     = @file_get_contents($url);
+
+			// Check whether file_get_contents threw an error
+			$error = error_get_last();
+
+			if (strpos($error['message'], $url)!==false) {
+				$msg = $error['message'];
+				
+				//echo "file get contents returned an error.\n";
+				$httpPattern = '/HTTP\/(\d\.\d) (\d*) (.*)$/';
+				if (preg_match($httpPattern, $msg, $matches)) {
+					//echo 'HTTP/', $matches[1], ' ', $matches[2], ' ', $matches[3], "\n";
+
+					$response = new HttpResponse();
+					$response->setStatus($matches[2]);
+					$response->setStatusMsg(trim($matches[3]));
+					$response->setVersion($matches[1]);
+				} elseif (preg_match('/stream: (.*)$/', $msg, $matches)) {
+					$response = new HttpResponse();
+					$response->setStatus(502);
+					$response->setStatusMsg($matches[1]);
+				} else {
+					echo "WARN: No valid HTTP reply from file_get_contents:\n",
+						$msg, "\n";
+				}
 			} else {
-				// TODO: See if there's a readable error from file_get_contents
-				// Set a general network error.
-				$response->setStatus('500');
-				$response->setStatusMsg(
-					'file_get_contents unable to retrieve URL'
-				);
+				// Valid response
+				$response = new HttpResponse();
+				if (!empty($body)) {
+					$response->setStatus('200');
+					$response->setStatusMsg('Ok');
+					$response->setBody($body);
+				}
 			}
 		}
 		return $response;
@@ -96,7 +116,7 @@ class CurlHttpClient implements HttpClientMechanism {
 		
 		$response = new HttpResponse();
 
-		if ($headers[0]) {
+		if (!empty($headers) && $headers[0]) {
 			//echo "STATUS LINE:", $headers[0], "\n";
 			if (preg_match('/^(HTTP\/\d\.\d) (\d*) (.*)$/', $headers[0], $matches)) {
 				$response->setStatus($matches[2]);
