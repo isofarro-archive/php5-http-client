@@ -101,6 +101,8 @@ class CurlHttpClient implements HttpClientMechanism {
 	}	
 	
 	public function doGet($request) {
+		$response = NULL;
+
 		$ch = curl_init();
 		
 		curl_setopt($ch, CURLOPT_HTTPGET, true);
@@ -110,36 +112,31 @@ class CurlHttpClient implements HttpClientMechanism {
 		// Output the headers too
 		curl_setopt($ch, CURLOPT_HEADER, true);
 		
-		// TODO: Need to parse out the headers first!
 		$httpOutput = curl_exec($ch);
-		list ($headers, $body) = $this->parseOutput($httpOutput);
 		
-		$response = new HttpResponse();
+		if ($httpOutput) {
+			// Split the response into a header and body
+			list ($headers, $body) = $this->parseOutput($httpOutput);
+			$response = new HttpResponse();
 
-		if (!empty($headers) && $headers[0]) {
-			//echo "STATUS LINE:", $headers[0], "\n";
-			if (preg_match('/^(HTTP\/\d\.\d) (\d*) (.*)$/', $headers[0], $matches)) {
-				$response->setStatus($matches[2]);
-				$response->setStatusMsg($matches[3]);
-				$response->setVersion($matches[1]);
+			if (!empty($headers) && $headers[0]) {
+				// Parse the HTTP Status header
+				//echo "STATUS LINE:", $headers[0], "\n";
+				if (preg_match('/^(HTTP\/\d\.\d) (\d*) (.*)$/', $headers[0], $matches)) {
+					$response->setStatus($matches[2]);
+					$response->setStatusMsg($matches[3]);
+					$response->setVersion($matches[1]);
+				}
+				unset($headers[0]);
+			} else {
+				$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));	
 			}
-			unset($headers[0]);
-		} else {
-			$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));	
+
+			$response->setBody($body);
+			$response->setHeaders($headers);		
+
 		}
-
-		$response->setBody($body);
-		$response->setHeaders($headers);		
-
-/********		
-		$response->addHeader('Content-Type',
-			curl_getinfo($ch, CURLINFO_CONTENT_TYPE)
-		);
-		$response->addHeader('Content-Length',
-			curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD)
-		);
-********/
-				
+						
 		curl_close($ch);
 
 		return $response;
