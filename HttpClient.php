@@ -94,6 +94,15 @@ class CurlHttpClient implements HttpClientMechanism {
 			case 'GET':
 				$response = $this->doGet($request);
 				break;
+			case 'POST':
+				$response = $this->doPost($request);
+				break;
+			case 'PUT':
+				$response = $this->doPut($request);
+				break;
+			case 'DELETE':
+				$response = $this->doDelete($request);
+				break;
 			default:
 				break;
 		}
@@ -102,75 +111,134 @@ class CurlHttpClient implements HttpClientMechanism {
 	
 	public function doGet($request) {
 		$response = NULL;
-
 		$ch = curl_init();
 		
-		curl_setopt($ch, CURLOPT_HTTPGET, true);
-		curl_setopt($ch, CURLOPT_URL, $request->getUrl());
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-		// Output the headers too
-		curl_setopt($ch, CURLOPT_HEADER, true);
+		curl_setopt_array($ch, array(
+			CURLOPT_URL            => $request->getUrl(),
+			CURLOPT_HTTPGET        => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HEADER         => true
+		));
 		
 		$httpOutput = curl_exec($ch);
-		
-		if ($httpOutput) {
-			// Split the response into a header and body
-			list ($headers, $body) = $this->parseOutput($httpOutput);
-			$response = new HttpResponse();
-
-			if (!empty($headers) && $headers[0]) {
-				// Parse the HTTP Status header
-				//echo "STATUS LINE:", $headers[0], "\n";
-				if (preg_match('/^(HTTP\/\d\.\d) (\d*) (.*)$/', $headers[0], $matches)) {
-					$response->setStatus($matches[2]);
-					$response->setStatusMsg($matches[3]);
-					$response->setVersion($matches[1]);
-				}
-				unset($headers[0]);
-			} else {
-				$response->setStatus(curl_getinfo($ch, CURLINFO_HTTP_CODE));	
-			}
-
-			$response->setBody($body);
-			$response->setHeaders($headers);		
-
-		}
-						
+		$response = $this->parseResponse($httpOutput);
+								
 		curl_close($ch);
-
 		return $response;
 	}
-	
-	protected function parseOutput($output) {
-		$lines = explode("\n", $output);
-		$isHeader = true;
-		
-		$headers = array();
-		$buffer  = array();
 
-		foreach($lines as $line) {
-			if ($isHeader) {
-				if (preg_match('/^\s*$/', $line)) {
-					// Header/body separator
-					$isHeader = false;
-				} else {
-					// This is a real HTTP header
-					if (preg_match('/^([^:]+)\:(.*)$/', $line, $matches)) {
-						//echo "HEADER: [", $matches[1], ']: [', $matches[2], "]\n";
-						$headers[trim($matches[1])] = trim($matches[2]);
-					} else {
-						//echo "HEADER: ", trim($line), "\n";
-						$headers[0] = trim($line);
-					}					
-				}
-			} else {
-				$buffer[] = $line;
-			}
-		}		
-		$body = implode("\n", $buffer);
-		return array($headers, $body);
+	public function doPost($request) {
+		$ch = curl_init();
+
+		curl_setopt_array($ch, array(
+			CURLOPT_URL            => $request->getUrl(),
+			CURLOPT_POST           => true,
+			CURLOPT_POSTFIELDS     => $data, // TODO:
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HEADER         => true
+		));
+
+		$httpOutput = curl_exec($ch);
+		$response = $this->parseResponse($httpOutput);
+
+		curl_close($ch);
+		return $response;
 	}
+
+	public function doPut($request) {
+		$ch = curl_init();
+
+		curl_setopt_array($ch, array(
+			CURLOPT_URL            => $request->getUrl(),
+			CURLOPT_PUT            => true,
+			CURLOPT_INFILE         => $fh,           // TODO:
+			CURLOPT_INFILESIZE     => strlen($data), // TODO:
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HEADER         => true
+		));
+
+		$httpOutput = curl_exec($ch);
+		$response = $this->parseResponse($httpOutput);
+
+		curl_close($ch);
+		return $response;
+	}
+
+	public function doDelete($request) {
+		$ch = curl_init();
+
+		curl_setopt_array($ch, array(
+			CURLOPT_URL            => $request->getUrl(),
+			CURLOPT_CUSTOMREQUEST  => 'DELETE',
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HEADER         => true
+		));
+
+		$httpOutput = curl_exec($ch);
+		$response = $this->parseResponse($httpOutput);
+
+		curl_close($ch);
+		return $response;
+	}
+
+	/**
+	*	Parses the raw HTTP response and returns a response object
+	**/
+	protected function parseResponse($output) {
+		$response = new HttpResponse();
+		
+		if ($output) {
+			$lines    = explode("\n", $output);
+			$isHeader = true;
+			$buffer   = array();
+			
+			foreach($lines as $line) {
+				if ($isHeader) {
+					if (preg_match('/^\s*$/', $line)) {
+						// Header/body separator
+						$isHeader = false;
+					} else {
+						// This is a real HTTP header
+						if (preg_match('/^([^:]+)\:(.*)$/', $line, $matches)) {
+							//echo "HEADER: [", $matches[1], ']: [', $matches[2], "]\n";
+							$name  = trim($matches[1]);
+							$value = trim($matches[2]);						
+							$response->addHeader($name, $value);
+						} else {
+							// This is the status response
+							//echo "HEADER: ", trim($line), "\n";
+							if (preg_match(
+										'/^(HTTP\/\d\.\d) (\d*) (.*)$/', 
+										trim($line), $matches)
+									) {
+								$response->setStatus($matches[2]);
+								$response->setStatusMsg($matches[3]);
+								$response->setVersion($matches[1]);
+							}
+						}					
+					}
+				} else {
+					$buffer[] = $line;
+				}
+			}
+			// The buffer is the HTTP Entity Body
+			$response->setBody(implode("\n", $buffer));
+		} else {
+			$statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			
+			if ($statusCode==0) {
+				$response->setStatus(502);
+				$response->setStatusMsg('CURL Error');
+			} else {
+				$response->setStatus($statusCode);
+				$response->setStatusMsg('CURL Response');
+			}	
+		}
+
+		return $response;
+	}	
+	
+	
 }
 
 

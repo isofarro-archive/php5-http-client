@@ -8,6 +8,7 @@ HTTP connection libraries to be plugged in.
 Todo list:
 ----------
 
+ * Customisable redirect following
  * Cookie Jar
  * HTTP authentication
  * Support for REST HTTP methods
