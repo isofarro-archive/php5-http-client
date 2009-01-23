@@ -76,6 +76,7 @@ class CurlHttpClient implements HttpClientMechanism {
 		$hasFeature = true;
 		switch($feature) {
 			case 'GET':
+			case 'POST':
 				if (function_exists('curl_init')) {
 					$hasFeature = true;
 				}
@@ -120,6 +121,12 @@ class CurlHttpClient implements HttpClientMechanism {
 			CURLOPT_HEADER         => true
 		));
 		
+		// Convert to raw CURL headers and add to request
+		$headers = $this->processRequestHeaders($request->getHeaders());
+		if (!empty($headers)) {
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);            
+		}
+
 		$httpOutput = curl_exec($ch);
 		$response = $this->parseResponse($httpOutput);
 								
@@ -129,18 +136,30 @@ class CurlHttpClient implements HttpClientMechanism {
 
 	public function doPost($request) {
 		$ch = curl_init();
+		
+		$data = $request->getBody();
 
-		curl_setopt_array($ch, array(
-			CURLOPT_URL            => $request->getUrl(),
-			CURLOPT_POST           => true,
-			CURLOPT_POSTFIELDS     => $data, // TODO:
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_HEADER         => true
-		));
+		if ($data) {
+			curl_setopt_array($ch, array(
+				CURLOPT_URL            => $request->getUrl(),
+				CURLOPT_POST           => true,
+				CURLOPT_POSTFIELDS     => $data,
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_HEADER         => true
+			));
 
-		$httpOutput = curl_exec($ch);
-		$response = $this->parseResponse($httpOutput);
+			// Convert to raw CURL headers and add to request
+			$headers = $this->processRequestHeaders($request->getHeaders());
+			if (!empty($headers)) {
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);            
+			}
 
+			$httpOutput = curl_exec($ch);
+			$response = $this->parseResponse($httpOutput);
+		} else {
+			echo "ERROR: No body to send.\n";
+		}
+		
 		curl_close($ch);
 		return $response;
 	}
@@ -148,35 +167,53 @@ class CurlHttpClient implements HttpClientMechanism {
 	public function doPut($request) {
 		$ch = curl_init();
 
-		curl_setopt_array($ch, array(
-			CURLOPT_URL            => $request->getUrl(),
-			CURLOPT_PUT            => true,
-			CURLOPT_INFILE         => $fh,           // TODO:
-			CURLOPT_INFILESIZE     => strlen($data), // TODO:
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_HEADER         => true
-		));
+		$data = $request->getBody();
+		
+		if ($data) {
+			curl_setopt_array($ch, array(
+				CURLOPT_URL            => $request->getUrl(),
+				CURLOPT_CUSTOMREQUEST  => 'PUT',
+				CURLOPT_POSTFIELDS     => $data,
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_HEADER         => true
+			));
 
-		$httpOutput = curl_exec($ch);
-		$response = $this->parseResponse($httpOutput);
+			// Convert to raw CURL headers and add to request
+			$headers = $this->processRequestHeaders($request->getHeaders());
+			if (!empty($headers)) {
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);            
+			}
 
+			$httpOutput = curl_exec($ch);
+			$response = $this->parseResponse($httpOutput);
+		} else {
+			echo "ERROR: No body to send.\n";
+		}
+		
 		curl_close($ch);
 		return $response;
 	}
 
 	public function doDelete($request) {
+		$response = NULL;
 		$ch = curl_init();
-
+		
 		curl_setopt_array($ch, array(
 			CURLOPT_URL            => $request->getUrl(),
 			CURLOPT_CUSTOMREQUEST  => 'DELETE',
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_HEADER         => true
 		));
+		
+		// Convert to raw CURL headers and add to request
+		$headers = $this->processRequestHeaders($request->getHeaders());
+		if (!empty($headers)) {
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);            
+		}
 
 		$httpOutput = curl_exec($ch);
 		$response = $this->parseResponse($httpOutput);
-
+								
 		curl_close($ch);
 		return $response;
 	}
@@ -237,7 +274,16 @@ class CurlHttpClient implements HttpClientMechanism {
 
 		return $response;
 	}	
-	
+
+	protected function processRequestHeaders($headers) {
+		$rawHeaders = array();
+		if (is_array($headers)) {
+			foreach ($headers as $key=>$value) {
+				$rawHeaders[] = $key . ': ' . $value;
+			}
+		}
+		return $rawHeaders;
+	}	
 	
 }
 
@@ -296,11 +342,42 @@ class HttpClient {
 	public function doRequest($request) {
 		$this->response = NULL;
 		if ($this->isClientCapable($request)) {
-			$this->response = $this->client->doRequest($request);		
+			$isReady = $this->isRequestReady($request);
+			if ($isReady) {
+				$this->response = $this->client->doRequest($request);		
+			} else {
+				echo "WARN: Request isn't ready.\n";
+			}
+		} else {
+			echo "WARN: HTTP Client isn't capable of performing this request.\n";
 		}
 		return $this->response;
 	}
 	
+	
+	protected function isRequestReady($request) {
+		$isReady = true;
+		
+		if (!$request->getUrl()) {
+			$isReady = false;
+		}		
+		switch($request->getMethod()) {
+			case 'GET':
+			case 'DELETE':
+				break;
+			case 'POST':
+			case 'PUT':
+				if (!$request->getBody()) {
+					$isReady = false;
+				}
+				break;
+			default:
+				$isReady = false;
+				break;
+		}
+		
+		return $isReady;
+	}	
 	
 	protected function isClientCapable($request) {
 		$isCapable = $this->client->can($request->getMethod());
