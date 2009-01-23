@@ -1,5 +1,11 @@
 <?php
 
+/**
+*	Testing REST methods work by communicating with api.php
+*  api.php should be uploaded to a webserver, and the
+*  $url below updated with the URL of that script.
+**/
+
 require_once 'HttpRequest.php';
 require_once 'HttpResponse.php';
 require_once 'HttpClient.php';
